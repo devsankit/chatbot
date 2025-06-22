@@ -15,6 +15,12 @@ function containsPhoneNumber(content) {
   return phoneRegex.test(content);
 }
 
+// Additional regex for contact-related phrases
+function containsContactRequest(content) {
+  const contactRegex = /(share|send|provide|give|tell|reveal|disclose).{0,20}(phone|contact|number|mobile|whatsapp|email|details|info)/i;
+  return contactRegex.test(content);
+}
+
 // List of phrases/keywords to flag for intent detection
 const flaggedPhrases = [
   // Sharing Personal Contact Information
@@ -99,8 +105,12 @@ app.post('/webhook', async (req, res) => {
   try {
     const { content, contact, conversation } = req.body;
 
-    // Check for phone number, flagged intent, flagged by OpenAI moderation, or flagged by AI intent
+    // Log incoming message for debugging
+    console.log('Incoming message:', content);
+
+    // Check for phone number, contact request, flagged intent, flagged by OpenAI moderation, or flagged by AI intent
     const flagged = containsPhoneNumber(content)
+      || containsContactRequest(content)
       || containsFlaggedIntent(content)
       || await checkMessageForFlag(content)
       || await checkIntentWithAI(content);
@@ -118,6 +128,10 @@ app.post('/webhook', async (req, res) => {
 });
 
 app.get('/', (req, res) => res.send('AI Moderation Bot Running'));
+
+app.get('/webhook', (req, res) => {
+  res.send('Webhook endpoint is live. Use POST to send data.');
+});
 
 app.listen(process.env.PORT, () =>
   console.log(`✅ Bot live on port ${process.env.PORT}`)
