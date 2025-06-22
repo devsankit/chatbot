@@ -98,6 +98,27 @@ async function checkIntentWithAI(content) {
   }
 }
 
+// Gemini fallback for moderation (template)
+async function checkWithGeminiAPI(content) {
+  try {
+    // Replace with your Gemini API endpoint and key
+    const response = await axios.post(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=' + process.env.GEMINI_API_KEY,
+      {
+        contents: [{ parts: [{ text: `Moderate this message for platform violations. Reply ONLY 'true' if it violates, otherwise 'false'. Message: "${content}"` }] }]
+      },
+      {
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+    const geminiReply = response.data.candidates[0].content.parts[0].text.trim().toLowerCase();
+    return geminiReply === 'true';
+  } catch (error) {
+    console.error('Error calling Gemini API:', error.message);
+    return false;
+  }
+}
+
 // Detailed warning message
 const warningMessage = `⚠️ Your message was flagged for violating platform rules. Please maintain professionalism and do not attempt to bypass platform protocols. Repeated violations may lead to temporary or permanent suspension.\n\n❌ **Examples of flagged content include**:\n\n🛑 **Sharing Personal Contact Information**\n- What’s your phone number?\n- DM me on Instagram\n- Here’s my WhatsApp: +91…\n- Call me / Ping me on Telegram\n- My Insta ID is…\n- Let’s talk outside the app\n- Message me privately\n- Find me on social media\n- Add me on Facebook / LinkedIn\n\n💸 **Asking for or Offering Direct Payments**\n- I’ll pay you on GPay / UPI\n- Don’t go through this platform\n- I’ll pay extra outside\n- What’s your Paytm number?\n- Send your bank details\n- Can you share your UPI ID?\n- I’ll send you advance directly\n- Forget this platform, I’ll deal with you personally\n\n🔗 **Sharing External Links or Files**\n- Here’s a Google Drive link\n- Download the file from Dropbox\n- I’ve sent a WeTransfer link\n- Click here for more info: bit.ly/…\n- Check this website for our chat\n- Here’s my portfolio link\n\n🧑‍🤝‍🧑 **Personal / Unprofessional / Flirty Behavior**\n- You’re very beautiful / cute\n- Are you single?\n- Want to meet up?\n- I’d love to see you someday\n- You seem really nice 😉\n- Let’s be friends\n\n💼 **Bypassing Hiring or Platform Process**\n- I want to hire you full-time directly\n- I’ll give you more work off-platform\n- Let’s work outside this\n- What’s your freelancing rate?\n- You’ll get more money with me directly\n- Just ignore platform charges\n\n📄 **Sharing Documents Outside Approved Channels**\n- Please check this document link\n- I can’t upload here, sending via email\n- Here’s a file you need to open\n- Open this doc from GDrive\n\n🧠 **Manipulative or Unethical Statements**\n- Let’s avoid the commission\n- We don’t need to tell them\n- I’ve done this before, don’t worry\n- They won’t know\n- Just say this if someone asks\n\n🗣️ **Offensive or Inappropriate Language**\n- Abusive words (filtered dynamically)\n- Any kind of discrimination\n- Hate speech or personal attacks\n\n🔐 **Platform Rule Reminder:**\nWe use automated AI moderation for your safety. Please keep the conversation **professional, ethical, and relevant to the work at hand**. Misuse of this platform will not be tolerated.\n\nIf flagged by mistake, rephrase your message clearly and appropriately.`;
 
@@ -115,7 +136,12 @@ app.post('/webhook', async (req, res) => {
       || containsContactRequest(content)
       || containsFlaggedIntent(content);
     if (!flagged) {
-      flagged = await checkMessageForFlag(content) || await checkIntentWithAI(content);
+      try {
+        flagged = await checkMessageForFlag(content) || await checkIntentWithAI(content);
+      } catch (openaiError) {
+        console.error('OpenAI failed, trying Gemini:', openaiError.message);
+        flagged = await checkWithGeminiAPI(content);
+      }
     }
 
     // Use contact.id or sender.id for contactId
