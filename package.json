@@ -1,0 +1,14 @@
+{
+  "name": "chatwoot-moderation-bot",
+  "version": "1.0.0",
+  "description": "Simple moderation bot for Chatwoot",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "axios": "^1.10.0",
+    "body-parser": "^1.20.3",
+    "express": "^4.21.2"
+  }
+}
