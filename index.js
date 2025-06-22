@@ -103,21 +103,31 @@ const warningMessage = `⚠️ Your message was flagged for violating platform r
 
 app.post('/webhook', async (req, res) => {
   try {
-    const { content, contact, conversation } = req.body;
+    // Log the full payload for debugging
+    console.log('Webhook payload:', JSON.stringify(req.body, null, 2));
+    const { content, contact, conversation, sender } = req.body;
 
     // Log incoming message for debugging
     console.log('Incoming message:', content);
 
-    // Check for phone number, contact request, flagged intent, flagged by OpenAI moderation, or flagged by AI intent
-    const flagged = containsPhoneNumber(content)
+    // Only call OpenAI APIs if regex/keyword checks do not flag
+    let flagged = containsPhoneNumber(content)
       || containsContactRequest(content)
-      || containsFlaggedIntent(content)
-      || await checkMessageForFlag(content)
-      || await checkIntentWithAI(content);
-    if (flagged) {
+      || containsFlaggedIntent(content);
+    if (!flagged) {
+      flagged = await checkMessageForFlag(content) || await checkIntentWithAI(content);
+    }
+
+    // Use contact.id or sender.id for contactId
+    const contactId = (contact && contact.id) || (sender && sender.id);
+    const conversationId = conversation && conversation.id;
+
+    if (flagged && contactId && conversationId) {
       // Send the detailed warning message
-      await sendWarning(contact.id, conversation.id, warningMessage);
+      await sendWarning(contactId, conversationId, warningMessage);
       console.log("⚠️ Flagged message:", content);
+    } else if (flagged) {
+      console.error("❌ Missing contact or conversation info in payload:", req.body);
     }
 
     res.status(200).send('Webhook received');
