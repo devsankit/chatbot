@@ -1,7 +1,15 @@
 // moderation.js
 const flaggedKeywords = [
-  "phone", "number", "call me", "WhatsApp", "Instagram", "personal",
-  "I want to work with you", "follow me", "outside link", "Google Drive"
+  // Contact info
+  "phone", "number", "call me", "whatsapp", "instagram", "email", "contact", "mobile",
+  // Payment
+  "paytm", "gpay", "upi", "bank details", "payment outside", "send money",
+  // Links
+  "drive.google.com", "dropbox.com", "wetransfer.com", "bit.ly", "linkedin.com", "facebook.com", "instagram.com", "telegram.me", "t.me",
+  // Unprofessional/flirty
+  "beautiful", "cute", "single", "meet up", "let's be friends",
+  // Bypass platform
+  "work outside", "ignore platform charges", "deal personally"
 ];
 
 function checkMessageForFlag(message) {
