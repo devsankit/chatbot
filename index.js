@@ -2,6 +2,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const axios = require('axios');
+const fs = require('fs');
 const { checkMessageForFlag } = require('./moderation');
 const { sendWarning, addPrivateNote, tagConversation } = require('./sendReply');
 
@@ -21,15 +22,19 @@ app.post('/webhook', async (req, res) => {
       return res.status(400).json({ error: 'Missing content or conversationId' });
     }
 
-    // Check for violations
-    const violation = checkMessageForFlag(content);
-    if (violation) {
+    // Check for violations (AI + keyword)
+    const result = await checkMessageForFlag(content);
+    if (result && result.violation) {
+      // Prevent duplicate warnings by checking for a tag (optional: implement tag check if needed)
       // Send warning to user
       await sendWarning(contactId, conversationId);
       // Add private note for admin/team
-      await addPrivateNote(conversationId, `Violation detected: "${violation}" in message: "${content}"`);
+      await addPrivateNote(conversationId, `Violation detected (${result.source}): "${result.violation}" in message: "${content}"`);
       // Tag the conversation
       await tagConversation(conversationId, 'violation');
+      // Log/report
+      const logEntry = `${new Date().toISOString()} | Conversation: ${conversationId} | Contact: ${contactId} | Source: ${result.source} | Violation: ${result.violation} | Message: ${content}\n`;
+      fs.appendFile('moderation_report.log', logEntry, err => { if (err) console.error('Log error:', err); });
     }
 
     res.status(200).json({ success: true });
